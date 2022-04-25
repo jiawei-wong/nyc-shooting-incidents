@@ -1,0 +1,336 @@
+---
+title: "Shooting Incidents in NYC Skyrocket in 2020 due to Strained Law Enforcement, New Laws and Hate Crimes Caused by the Pandemic"
+author: "Julia Wong"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  bookdown::pdf_document2:
+    fig_caption: yes
+    keep_tex: true
+    number_sections: yes
+header-includes:
+  \usepackage{float}
+  \floatplacement{figure}{H}
+abstract: "Using data from NYC Open Data, we explore the underlying causes behind the shooting incidents reported within the 5 boroughs of New York City between 2006 and 2020. The number of shooting incidents reported has been progressively decreasing since 2006 but abruptly doubled between 2019 and 2020. This could be a result of bail reform laws, racially motivated hate crimes that have led to protest movements such as ‘Black Lives Matter’ and ‘Stop Asian Hate’, as well as economic hardship that stemmed from the COVID-19 pandemic in 2020. The race of the victims and the borough in which the shooting occurred were analyzed in order to understand the possible motive behind the sudden surge in shooting incidents more thoroughly. \\par \\textbf{Keywords:} New York City, Gun Violence, Borough, Race, Asian Hate Crime, Economic Hardship, COVID-19"
+thanks: 'Code and data are available at: https://github.com/jiawei-wong/nyc-shooting-incidents'
+toc: FALSE
+bibliography: references.bib 
+---
+
+  \tableofcontents
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r setup, include=FALSE}
+library(knitr)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(kableExtra)
+library(bibtex)
+library(bookdown)
+
+#write_bib(c(.packages(), "knitr", "tidyverse", "dplyr", "ggplot2", "kableExtra", "bibtex", "bookdown"), "references.bib")
+```
+
+# Introduction
+
+New York City has had a bad reputation for its level of safety in terms of crime since the 1970s. Fiscal problems in the New York Police Department (NYPD) led to the lay-off of more than 50,000 police officers, thus increasing the chances for crime to occur in the city [@nychistory]. As the number of crimes rapidly increased throughout the years, the government was forced to hire more police officers when the crime rate finally hit its peak in the 1990s [@nychistory]. Since the expansion of the police force and improvement in policing measures, the crime rate began to drop and made New York City a better and safer city. However, the city is again experiencing its highest crime rate it has had in 2020 after almost a decade.
+
+In 2019, the New York state passed a bail reform law that eliminated cash bail for most misdemeanor and non-violent felonies [@bailreformfaq]. For all violent and some misdemeanor felonies, judges are given the choice to set bail or other options that will require a defendant to return to court [@bailreformcontroversy]. Despite the fact that people have been fighting for a bail reform law that scales back the use of cash bail due to inequality for the underprivileged, people are now blaming the new bail reform law for the spike in gun and other violences in 2020. Their reasoning is that there are now more people who are charged with crimes roaming the public streets of New York City, which equals more danger in society [@vox]. Although there has in fact been a surge of crime since the bail reform law went into effect, there has also been an ongoing pandemic that led to racially motivated hate crimes in communities globally, including New York City.
+
+Xenophobia, hate and physical attacks aimed towards Asian communities have spread alongside the COVID-19 virus [@hrw]. According to the NYC human rights website, there has been a sevenfold increase in reports of anti-Asian violence since February 2020 [@stopasianhate]. However, the number of reports could be greater as incidents related to hate crimes and biases are often underreported [@stopasianhate]. Regardless, Asian hate crime is a potential factor in the sudden spike of shooting incidents in New York City. Additionally, the COVID-19 pandemic has caused emotional and physical distress in communities due to job losses, financial problems and mental health disorders. The rise in shootings could be linked to low-income neighbourhoods that already had more cases of shooting incidents even before the pandemic [@spike]. 
+
+In this paper, using the NYPD shootings incident data from NYC Open Data, we will first look at the overall number of shooting incidents reported between 2006 and 2020, identifying patterns and findings that stand out. We will then look more closely into the number of incidents that were recorded in each month of 2020. We will analyze the race and gender of the victims to further elaborate on the connection between the surge of shooting incidents and racially motivated hate crimes or poverty living situations. Finally, we will look at the number of shooting incidents reported in each of the 5 boroughs in New York City, analyzing the correlation between numbers reported and location of the shootings. With the extreme changes within the year of 2020, it is impossible to pick out a single reasoning behind this sudden spike in shooting incidents. It is crucial to take into account several factors that could have led to this spike.
+
+# Data
+
+```{r, include=FALSE}
+raw_data <- read_csv(here::here("inputs/data/raw_data.csv"))
+
+cleaned_data <- raw_data |>
+  select(OCCUR_DATE, BORO, STATISTICAL_MURDER_FLAG, PERP_AGE_GROUP, PERP_SEX, PERP_RACE,
+         VIC_AGE_GROUP, VIC_SEX, VIC_RACE)
+
+format(as.Date(cleaned_data$OCCUR_DATE, format="%d/%m/%Y"),"%Y")
+cleaned_data$Year <- format(cleaned_data$OCCUR_DATE, format="%Y")
+cleaned_data$Month <- format(cleaned_data$OCCUR_DATE, format="%B")
+```
+
+This analysis utilizes the `R` [@citeR] programming language for statistical computing and graphics. The `tidyverse` [@R-tidyverse] package is downloaded for access to other essential R packages. The `dplyr` [@R-dplyr] package allowed us to manipulate the data and create new variables for making effective tables and graphs. Graphs are created using `ggplot2` [@R-ggplot2] and tables are created using `kableExtra` [@R-kableExtra] to visually demonstrate the key findings. The `knitr` [@R-knitr], `bibtex` [@R-bibtex] and `bookdown` [@R-bookdown] packages are used to create the R markdown report and reference literature used to support our arguments.
+
+## Data Source and Methodology
+
+The data used in this paper is the NYPD Shooting Incident Data published on NYC OpenData, a free public data portal with data published by New York City agencies and other partners. The agency responsible for the publishing of this data is the New York Police Department (NYPD). This data that was last updated on November 22, 2021 provides an overview of shooting incidents that occured in New York City from 2006 to 2020. The data is extracted every three months and reviewed by the Office of Management Analysis and Planning before being posted on the data portal. It includes records of shooting incidents alongside the location and time of occurence, the demographics of the victim and perpetrator, and the fatality of the incident [@nypd]. It is important to note that only shooting incidents that resulted in an injured victim are included in this data.
+
+We downloaded the NYPD Shooting Incident Dataset from the NYC OpenData portal as an excel file and imported it into R studio. The raw data includes 23,585 observations and 19 variables:
+
+1. INCIDENT_KEY: Randomly generated persistent ID for each arrest.
+2. OCCUR_DATE: Exact date of the shooting incident.
+3. OCCUR_TIME: Exact time of the shooting incident.
+4. BORO: Borough where the shooting incident occurred.
+5. PRECINCT: Precinct where the shooting incident occurred.
+6. JURISDICTION_CODE: Jurisdiction where the shooting incident occurred. Jurisdiction codes 0(Patrol), 1(Transit) and 2(Housing) represent NYPD whilst codes 3 and more represent non NYPD jurisdictions.
+7. LOCATION_DESC: Location of the shooting incident.
+8. STATISTICAL_MURDER_FLAG: Shooting resulted in the victim’s death which would be counted as a murder.
+9. PERP_AGE_GROUP: Perpetrator’s age within a category.
+10. PERP_SEX: Perpetrator’s sex description.
+11. PERP_RACE: Perpetrator’s race description.
+12. VIC_AGE_GROUP: Victim’s age within a category.
+13. VIC_SEX: Victim’s sex description.
+14. VIC_RACE: Victim’s race description.
+15. X_COORD_CD: Midblock X-coordinate for New York State Plane Coordinate System, Long Island Zone, NAD 83, units feet (FIPS 3104).
+16. Y_COORD_CD: Midblock Y-coordinate for New York State Plane Coordinate System, Long Island Zone, NAD 83, units feet (FIPS 3104).
+17. Latitude: Latitude coordinate for Global Coordinate System, WGS 1984, decimal degrees (EPSG 4326).
+18. Longitude: Longitude coordinate for Global Coordinate System, WGS 1984, decimal degrees (EPSG 4326)
+19. Lon_Lat: Longitude and Latitude Coordinates for mapping.
+
+When cleaning the data, we removed variables that did not provide useful information to our analysis. This includes incident_key, precinct, jurisdiction_code, location_desc, x_coord_cd, y_coord_cd, latitude, longitude, and lon_lat. The random ID code and specific location coordinates of each shooting incident recorded were not particularly helpful towards our paper’s goal of understanding the motive behind the shooting incidents. We also removed the age groups of the victims and perpetrators as they were a range of numbers and not overly useful towards this analysis. Lastly, the demographics of the perpetrators were also removed as more than half of them were NA. Two variables: ‘Year’ and ‘Month’ were created using the original variable ‘occur_date’ to more effectively graph shooting incidents by year or specific months within a year. The cleaned dataset now includes occur_date, boro, statistical_murder_flag, vic_sex, vic_race, year, and month.
+
+## Shooting Incidents in New York City
+
+```{r totalshootings, fig.cap="Shooting Incidents in NYC from 2006 to 2020", echo=FALSE, warning=FALSE, message=FALSE, fig.width=8}
+total_shootings <- cleaned_data |>
+  select(Year) |>
+  arrange(Year) |>
+  group_by(Year) |>
+  count()
+
+total_shootings |>
+  ggplot(aes(Year, n)) +
+  geom_bar(position="dodge", stat="identity") +
+  labs(x = "Year", y = "Number of shootings",
+      title = "Shootings in New York City Between 2006 - 2020")
+```
+
+```{r totalshootingspercent, fig.cap="Growth or Decline of Shooting Incidents in NYC from 2006 to 2020", echo=FALSE, warning=FALSE, message=FALSE, fig.width=8}
+total_shootings_percent <- total_shootings |>
+  data.frame("Year" = c("2006", "2007", "2008", "2009", "2010",
+                                      "2011", "2012", "2013", "2014", "2015",
+                                      "2016", "2017", "2018", "2019", "2020"),
+             "Total_Number" = c("2055", "1887", "1959", "1828", "1912", "1939", 
+                                "1717", "1339", "1464", "1434", "1208",
+                                "970", "958", "967", "1948"),
+             "Increase/Decrease" = c("NA", "-8.18", "3.82", "-6.69", "4.60", "1.41", "-11.45",
+                                     "-22.05", "9.34", "-2.05", "-15.76", "-19.70", "-1.24",
+                                     "0.94", "101.45")) |>
+    select(-c(1:2))
+
+knitr::kable(total_shootings_percent, caption = "The Number of Shooting Incidents and Percentage
+             Growth/Decline (2006 - 2020)",
+             col.names = c("Year", "Total Number of Incidents", "Increase/Decrease from Previous
+                           Year (%)"),
+             booktabs = TRUE,
+             linesep = "") |>
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed")) |>
+  kable_classic() |>
+  kable_styling(latex_options = "HOLD_position")
+```
+
+Figure 1 and Table 1 depict the number of shooting incidents in New York City that resulted in an injury from 2006 to 2020. The number of shooting incidents has been decreasing since 2006 with a couple of slight fluctuations. It is noticeable that the number of shooting incidents reached, and remained, its lowest number for three consecutive years from 2017 to 2019 but suddenly spiked in 2020. The number of shooting incidents in 2020 is double the number in 2019 with a 101.45% increase within a year. With 1,948 incidents recorded, 2020 comes in third place for the highest number of incidents recorded in a year, after 2008 with 1,959 incidents and 2006 with 2055 incidents. 
+
+```{r monthlyshootings, fig.cap="Number of Shootings in 2020 by Month", echo=FALSE, warning=FALSE, message=FALSE, fig.width=8}
+latest_shootings <- cleaned_data |>
+  filter(Year == "2020") |>
+  select(Month) |>
+  group_by(Month) |>
+  count() |>
+  mutate(Month = factor(Month, levels = month.name)) |>
+  arrange(Month)
+
+latest_shootings |>
+  ggplot(aes(Month, n, group = 1)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Month", y = "Number of Shootings", 
+       title = "Number of Shootings in 2020 by Month")
+```
+
+Figure 2 depicts the number of shooting incidents recorded in each month of 2020. The number of shooting incidents that was initially dropping in January began rising in February. It surged beginning April and remained consistently high throughout the summer season, specifically the months of June and July. The peak month of shooting incidents recorded is July with 325 recorded incidents. Although the number of shooting incidents began dropping from August to December, the numbers in these five months are still higher than the numbers recorded in the first five months of 2020.
+
+```{r victimgenderrace, fig.cap="The Gender and Race of Victims in 2020", echo=FALSE, warning=FALSE, message=FALSE}
+latest_shootings_race_sex <- cleaned_data |>
+  select(VIC_RACE, VIC_SEX, Year) |>
+  filter(Year == "2020") |>
+  mutate(VIC_SEX = recode(VIC_SEX, F = 'Female', M = 'Male'),
+         VIC_RACE = recode(VIC_RACE, "ASIAN / PACIFIC ISLANDER" = 'Asian / Pacific Islander',
+                           "BLACK" = 'Black',
+                           "BLACK HISPANIC" = 'Black Hispanic',
+                           "WHITE" = 'White',
+                           "WHITE HISPANIC" = 'White Hispanic'))
+
+victim_gender <- latest_shootings_race_sex |>
+  group_by(VIC_SEX) |>
+  count()
+colnames(victim_gender)[1] <- "Gender"
+colnames(victim_gender)[2] <- "Total"
+
+victim_race <- latest_shootings_race_sex |>
+  group_by(VIC_RACE) |>
+  count()
+colnames(victim_race)[1] <- "Race"
+colnames(victim_race)[2] <- "Total"
+
+knitr::kable(list(victim_gender, victim_race), 
+             caption = "The Gender and Race of Victims in 2020",
+             booktabs = TRUE) |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) |>
+  kable_classic() |>
+  kable_styling(latex_options = "HOLD_position")
+```
+
+Table 2 shows the number of shooting incident victims in 2020 by their gender and race. It can be seen that the majority of the victims are males. Male victims total up to 1747 whereas female victims total up to only 201 out of a total of 1948 recorded incidents. Of all the races, the number of Black identifying victims sit drastically high at 1380 out of 1948, followed by White Hispanic, Black Hispanic, White, and Asian / Pacific Islander.
+
+```{r boroughshootings, fig.cap="Total Number of Shootings by Borough", echo=FALSE, warning=FALSE, message=FALSE, fig.width=8}
+borough_shootings <- cleaned_data |>
+  select(BORO) |>
+  group_by(BORO) |>
+  count() |>
+  mutate(BORO = recode(BORO, "BRONX" = 'The Bronx',
+         "BROOKLYN" = 'Brooklyn',
+         "MANHATTAN" = 'Manhattan',
+         "QUEENS" = 'Queens',
+         "STATEN ISLAND" = 'Staten Island'))
+
+borough_shootings |>
+  ggplot(aes(BORO, n)) +
+  geom_bar(stat="identity", fill = "grey") +
+  geom_text(aes(label=n), size = 4, position = position_stack(vjust = 0.5)) +
+  labs(x = "Borough", y = "Number of shootings",
+       title = "Shootings in New York City by Boroughs between 2006 - 2020") +
+  theme_light()
+```
+
+Figure 3 depicts the number of shooting incidents from 2006 to 2020 by each boroughs of New York City which includes the Bronx, Brooklyn, Manhattan, Queens, and Staten Island. Brooklyn tops all five boroughs as the borough with the highest number of shooting incidents at 9743 recorded incidents. The Bronx comes in second highest number of shooting incidents at 6701 followed by Queens, Manhattan and Staten Island with the lowest number at 696 recorded incidents.
+
+```{r fatalityrate, fig.cap="The Gender and Race of Victims in 2020", echo=FALSE, warning=FALSE, message=FALSE}
+fatality <- cleaned_data |>
+  select(STATISTICAL_MURDER_FLAG, Year) |>
+  group_by(STATISTICAL_MURDER_FLAG, Year) |>
+  count() |>
+  pivot_wider(names_from = STATISTICAL_MURDER_FLAG,
+              values_from = n) |>
+  mutate(Total = c(""),
+         "Non-fatal (%)" = c(""),
+         "Fatal (%)" = c(""))
+
+colnames(fatality)[2] <- "Non-fatal"
+colnames(fatality)[3] <- "Fatal"
+
+fatality$Total=rowSums(cbind(fatality$`Non-fatal`, fatality$Fatal))
+
+fatality$`Non-fatal (%)`= (fatality$`Non-fatal`/fatality$Total)*100
+fatality$`Fatal (%)`= (fatality$`Fatal`/fatality$Total)*100
+
+fatality_new <- fatality |>
+  select(1, 5, 6)
+
+knitr::kable(fatality_new, caption = "Percentage of Fatal and Non-fatal Incidents (2006 - 2020)",
+             digits = 2,
+             linesep = "",
+            booktabs = TRUE) |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) |>
+  kable_classic() |>
+  kable_styling(latex_options = "HOLD_position")
+```
+
+Table 3 displays the percentage of fatal and non-fatal shooting incidents in New York City from 2006 to 2020. Overall, the majority of shooting incidents throughout the 14 years are non-fatal, meaning that the injured victim survived the incident and that the shooting was not counted as a murder. Although the number of shooting incidents is drastically higher in 2020 in comparison to 2019 (Table \@ref(tab:totalshootingspercent)), the number of fatal incidents in 2020 are lower than in 2019 with a decrease of 0.24%.
+
+# Results
+
+In this section, we focused on identifying the correlation between multiple variables from the data. We created graphs that combine variables such as race of the victim and the year where the incident occured, as well as the fatality of the incidents and borough where the incident occured. Figure 4’s growth/decrease percentages were calculated by subtracting 2020’s value from 2019’s and dividing the result by 100. Figure 5’s percentages by incident type were calculated by dividing the number of fatal incidents from the total number of shootings in each borough and multiplying the results by 100.
+
+```{r victimsrace, fig.cap="Victims of Shootings by Race (2019 - 2020)", echo=FALSE, warning=FALSE, message=FALSE, fig.width=8}
+racial_hate <- cleaned_data |>
+  select(VIC_RACE, Year) |>
+  filter(Year == "2020" | Year == "2019") |>
+  subset(VIC_RACE!="UNKNOWN") |>
+  mutate(VIC_RACE = recode(VIC_RACE,
+                           "ASIAN / PACIFIC ISLANDER" = 'Asian / Pacific Islander',
+                           "BLACK" = 'Black',
+                           "BLACK HISPANIC" = 'Black Hispanic',
+                           "WHITE" = 'White',
+                           "WHITE HISPANIC" = 'White Hispanic')) |>
+  arrange(desc(Year)) |>
+  group_by(VIC_RACE, Year) |>
+  count()
+
+racial_hate |>
+  ggplot(aes(Year, n)) +
+  geom_bar(stat = "Identity", fill = "grey") +
+  geom_text(aes(label=n), size = 4, position = position_stack(vjust = 0.8)) +
+  facet_wrap(~ VIC_RACE) + 
+  labs(x = "Year", y = "Number of Shootings", title = "Victims of Shootings by Race (2019 - 2020)")
+```
+
+To further analyze the association between race and the increase in shootings from 2019 to 2020, we created specific graphs for each race that displays the difference in the number of shootings in each year (Figure \@ref(fig:victimsrace)). While it is evident that the number of shootings have increased in 2020, the racial breakdown of the victims in 2020 still follows the pattern in 2019. Although the majority of victims are black identifying, as mentioned in the previous section (section \@ref(data)), the racial group that faced the highest increase in being victims in 2020 is the black hispanic group at 106.58%. This is followed by the black group with 104.14% increase, white hispanic group with 101.20% increase, asian/pacific islander group with 90% increase and white group with 39.29% increase. Through this figure, it is noticeable that the racial groups that faced the highest growth of being victims are the minority groups. Additionally, because of the small number of asian/pacific islander identifying victims, it is easy to oversee the significant increase of victims that identify under this group. This is a crucial aspect of this data that will be discussed in the next section.
+
+```{r fatalityborough, fig.cap="Fatality of Shooting Incident by Borough (2020)", echo=FALSE, warning=FALSE, message=FALSE, fig.width=8}
+fatality_borough <- cleaned_data |>
+  mutate_if(is.logical, as.character) |>
+  select(Year, STATISTICAL_MURDER_FLAG, BORO) |>
+  filter(Year == "2020") |>
+  mutate(BORO = recode(BORO, "BRONX" = 'The Bronx',
+                       "BROOKLYN" = 'Brooklyn',
+                       "MANHATTAN" = 'Manhattan',
+                       "QUEENS" = 'Queens',
+                       "STATEN ISLAND" = 'Staten Island'),
+         STATISTICAL_MURDER_FLAG = recode(STATISTICAL_MURDER_FLAG, "FALSE" = 'Non-fatal',
+                                          "TRUE" = 'Fatal')) |>
+  group_by(STATISTICAL_MURDER_FLAG, BORO) |>
+  count()
+
+fatality_borough |>
+  ggplot(aes(BORO, n, fill = STATISTICAL_MURDER_FLAG), las = 2) +
+  geom_bar(stat = "Identity") +
+  geom_text(aes(label=n), size = 3, position = position_stack(vjust = 0.5)) +
+  theme_light() +
+  labs(x = "Borough", y = "Number of Shootings", fill = "Incident Type", title = "Fatality of Shooting Incident by Borough in 2020") +
+  theme_light()
+```
+
+Figure 5 depicts the number of shooting incidents by its type (1) fatal (2) non-fatal in each of the five boroughs in New York City. Brooklyn has the highest number of fatal shooting incidents that resulted in the victim’s death whereas Staten Island has the least number of fatal shooting incidents. However, it is important to take into account the total number of shooting incidents in each borough. Although Staten Island has the lowest total number of shooting incidents, it has the highest fatality rate at 68% as compared to Brooklyn’s fatality rate at 19.66%. Similarly, the Bronx comes in second for having the highest total number of shooting incidents but comes in first for the lowest fatality rate at 17.06%. This implies that there are different causes behind the shooting incidents that result in the difference in the incident type.
+
+# Discussion
+
+It would be valid to assume that with the implementation of country restrictions to curb the spread of the COVID-19 virus, all types of crime including gun violence would decrease due to the increase of people staying at home. However, this data says otherwise. In this section, we explore the possible underlying reasons behind the sudden surge in gun violence cases in 2020, an unprecedented year for everyone, everywhere. 
+
+## Lack of police enforcement and new laws
+
+An underlying reason behind the spike in the number of shooting incidents in 2020 could be due to a shortage of law enforcement officers. Gun violence cases have been increasing but the number of arrests have been decreasing. According to an article by the New York Times, the COVID-19 virus has strained the NYPD crew as 1 out of every 6 New York City police officers is out sick or in quarantine [@virustoll] due to being tested positive for COVID-19 or having a close contact with a positive case. New COVID-19 rules that require police enforcement such as maintaining social-distancing measures in public spaces have led to police officers being pulled from their regular assignment and moved onto patrol. Not only does this decrease the number of available police officers in-charge of city crime such as gun violence, it exposes them to the virus as they are required to patrol virus-prone public spaces such as grocery stores, clinics and hospitals, increasing their chances of getting the virus. The lack of gun arrests has led offenders to believe that there will not be any consequences for their actions [@mayorblames]. Additionally, protests that happened throughout 2020 such as the Black Lives Matter protest also pulled away a number of law enforcement officers from controlling gun violence in the city. 
+
+Furthermore, New York State’s bail reform law that went into effect in the beginning of 2020 [@factsbailreform] could also be a contributing factor towards the rise in shooting incidents. Racial imbalance in the criminal justice system across the United States has been an issue for decades. Before this new law, the underprivileged faced a risk of being jailed due to not being able to afford the cash bail for release. The introduction of this bail reform law was to help the underprivileged and increase the sense of equality in the criminal justice system. However, there has been an increase in violent crime, including gun violence, since the implementation of this law and people have been blaming the bail reform law as more offenders are able to freely roam the streets. Being arrested and then released also in a way encourages the offenders to carry firearms as they feel more comfortable and ensured that they won’t face any consequences [@mayorblames]. The requirement to release inmates without the ability to detain dangerous defendants have led to the increased number of crimes, especially in neighbourhoods where the population is largely Black New Yorkers {@backfire]. 
+
+It has been long-standing history that the black community in the United States is more significantly impacted by gun violence than any other race in the country. Black Americans are found to experience 10 times the gun homicides, 18 times the gun assault injuries, and almost 3 times the fatal police shootings of white Americans [@impact]. This explains the evidently high number of shooting incidents associated with the black community as depicted in Figure 4. NYPD officers believe that there is a high chance that more than half of the shootings incidents in 2020 are associated with gang activities [@wsj] such as feuds between gang members. 99% of New York City’s gang database are people of colour, with 65% Blacks, 24% Non-white Hispanics and 10% Black Hispanics [@jjie]. The number of shooting incidents in each borough (Figure \@ref(fig:fatalityborough)) can factor in the black population of each borough. The higher the number of Black New Yorkers living in the borough, the higher the number of shooting incidents. Data from Black Demographics shows that Brooklyn comes in first with the highest black population followed by the Bronx, Queens, Manhattan and Staten Island [@blackdemographics], which perfectly fits the pattern in Figure 3 and 5 and supports our argument.
+
+## Racially motivated hate crime
+
+```{r asianshootings, fig.cap="Asian and Pacific Islander Shooting Victims Each Month in 2020", echo=FALSE, warning=FALSE, message=FALSE, fig.width=8}
+asian_shootings <- cleaned_data |>
+  filter(Year == "2020" & VIC_RACE == "ASIAN / PACIFIC ISLANDER") |>
+  select(Month) |>
+  group_by(Month) |>
+  count() |>
+  mutate(Month = factor(Month, levels = month.name)) |>
+  arrange(Month)
+
+#Graphing
+asian_shootings |>
+  ggplot(aes(Month, n, group = 1)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Month", y = "Number of Victims",
+       title = "Number of Asian and Pacific Islander Shooting Victims by Month (2020)")
+```
+
+The COVID-19 outbreak has affected communities around the world in many ways. One of the effects is the perspective that people have on certain races, especially Asians. The increase in the number of Asian and Pacific Islander shooting victims in 2020 (Figure \@ref(fig:victimsrace)) is mostly likely to be linked to the discrimination and hatred that stemmed from the COVID-19 pandemic. Figure 6 supports this argument as it displays the rise in the number of Asian victims beginning the month of March, which is when the COVID-19 outbreak started. Not only in New York City, but people of Asian descent from other cities and countries have been facing “attacks and beatings, violent bullying, threats, racist abuse, and discrimination that appear linked to the pandemic [@hrw]. According to a survey published by the Pew Research Center in July 2020, 31% of Asian adults stated that they have been subjected to racial slurs such as being called the ‘Chinese Virus’ since the pandemic began. Additionally, 26% of Asian adults felt worried about their safety due to their race and 58% stated that it has become more common for people to express their racist views about people of Asian descent [@pew]. 
+
+Despite the surge in Asian hate crimes in 2020, the number of shooting incidents associated with Asians and Pacific Islanders as seen in Figure 4 is the lowest in comparison to other minority groups listed. This is due to the nature of underreporting hate incidents in the Asian and Pacific Islander community. A survey by AAPI Data found that Asians are “among the least likely to state they are “very comfortable” reporting hate crimes to authorities [@nbc]. This reluctance among the community could be because of several reasons. Firstly, many Asian immigrants have had poor experiences with law enforcement officers which contributes to their fear and distrust or their mindset that there will be no difference even if they report their case. Some with immigration problems will further avoid reaching out to law enforcement officers due to fear of getting in trouble because of their legal status [@nypost]. Secondly, language barriers could hinder their ability or confidence to report their case. Thirdly, they could voluntarily choose not to report their case to avoid unwanted attention to themselves.
+
+## Economic and psychological distress
+
+Certain groups of Americans are more likely to live in poverty due to uncontrollable factors such as their gender and race. According to the annual poverty tracker report from Robinhood, Black and Latino New Yorkers are twice as likely to live in poverty in comparison to White New Yorkers [@robinhood]. More than half of the Black and Latino adults in New York City were already living in poverty in 2019 before the start of the pandemic. The pandemic has undoubtedly caused even further damage to their living situation due to job losses, pay-cuts and overall financial hardship. Moreover, economic distress is a leading factor in psychological distress. The Center for Disease Control and Prevention reported that 40% adults in the United States have experienced mental health due to stressors from the pandemic. Of the 40% adults, 1 out of 4 revealed that they have considered suicide during the course of the pandemic [@newyorklife]. Minority groups that are facing severe mental distress are more vulnerable to commiting suicide [@robinhood]. The data in this paper does not disclose the motive behind the shooting incidents but a possible motive could be suicide through guns, especially the fatal incidents as about 85% of suicide attemps through firearms result in deaths [@harvard]. The Black and Hispanic community makes up 69.3% of Brooklyn’s population [@brooklyn] and 83.3% of the Bronx’s population [@bronx], the two boroughs with the highest number of shooting incidents (Figure \@ref(fig:fatalityborough)). A portion of the shooting incidents within these high poverty boroughs could stem from gun suicide attempts.
+
+\newpage
+# References
