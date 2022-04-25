@@ -6,13 +6,13 @@ This paper explore the sudden surge in gun violence since the beginning of the p
 ## How to Obtain Data
 Data can be obtained [here](https://data.cityofnewyork.us/Public-Safety/NYPD-Shooting-Incident-Data-Historic-/833y-fsy8)
 
-Download the dataset used in this report which is "Table 1: Persons aged 15 years and over, Social Experiences–By Sex, 2019 and 2020"
+Click on 'Export' on the top right side of the page
+
+Click on 'CSV for Excel' to download the file
 
 Open up R, then go to File > Import Dataset > From Excel...
 
 Click on 'Browse...' on the top right corner of the pop-up and select the downloaded dataset
-
-Navigate to 'Sheet' on the bottom left corner of the pop-up, select the drop-down menu and select 'Table 1.1_Estimate'
 
 Click on 'Import'
 
